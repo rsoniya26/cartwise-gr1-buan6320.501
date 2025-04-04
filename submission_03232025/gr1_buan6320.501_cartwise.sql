@@ -1736,3 +1736,54 @@ GROUP BY
     s.supplier_id, s.supplier_name
 HAVING 
     total_reviews > 0;
+
+/* Trigger 1 : trigger that update the stock in the product table whenever inventory changes occur in the inventory table
+@Author: Soniya Rajappan
+*/
+
+DELIMITER //
+    
+CREATE TRIGGER after_inventory_update
+AFTER UPDATE ON inventory
+FOR EACH ROW
+BEGIN
+    DECLARE total_stock INT;
+    
+    -- Calculate the total stock across all locations for this product
+    SELECT SUM(quantity) INTO total_stock
+    FROM inventory
+    WHERE product_id = NEW.product_id;
+    
+    -- Update the product table with the new total stock
+    UPDATE product
+    SET stock = total_stock
+    WHERE prod_id = NEW.product_id;
+END//
+
+DELIMITER ;
+
+/* Function 1 : To check the product availability
+@Author: Soniya Rajappan
+*/
+
+DELIMITER //
+
+CREATE FUNCTION is_product_available(
+    p_product_id INT,
+    p_quantity_needed INT
+) RETURNS BOOLEAN
+DETERMINISTIC
+READS SQL DATA
+BEGIN
+    DECLARE v_stock_available INT;
+    
+    SELECT stock INTO v_stock_available
+    FROM product
+    WHERE prod_id = p_product_id;
+    
+    RETURN v_stock_available >= p_quantity_needed;
+END //
+
+DELIMITER ;
+--SELECT is_product_available(5, 2) AS is_available;
+--SELECT is_product_available(21, 200) AS is_available;
